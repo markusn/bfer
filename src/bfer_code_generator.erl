@@ -90,7 +90,8 @@ steps() ->
 %% @hidden declarations and such
 -spec header(bfer:ast(), s(), string()) -> {bfer:ast(), s(), string()}.
 header(Nodes, #s{label=Label, head=Head} = S, _Code0 = "") ->
-  Str = "declare void @llvm.memset.i32(i8* nocapture, i8, i32, i32) nounwind~n"
+  Str = "declare void @llvm.memset.p0i8.i32(i8* nocapture, i8, i32, i32, i1) "
+        "nounwind~n"
         "declare i32 @getchar()~n"
         "declare i32 @putchar(i32)~n"
         "declare noalias i8* @malloc(i32) nounwind~n"
@@ -98,7 +99,8 @@ header(Nodes, #s{label=Label, head=Head} = S, _Code0 = "") ->
         "define void @main() {~n"
         "main.~p:~n"
         "  %arr = call i8* @malloc(i32 65536)~n"
-        "  call void @llvm.memset.i32(i8* %arr, i8 0, i32 65536, i32 1)~n"
+        "  call void @llvm.memset.p0i8.i32(i8* %arr, i8 0, i32 65536, i32 1, "
+        "i1 false)~n"
         "  %head.~p = getelementptr i8* %arr, i32 32768~n",
  Code = format(Str, [Label, Head]),
  {Nodes, S, Code}.

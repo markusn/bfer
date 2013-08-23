@@ -1,4 +1,4 @@
-declare void @llvm.memset.i32(i8* nocapture, i8, i32, i32) nounwind
+declare void @llvm.memset.p0i8.i32(i8* nocapture, i8, i32, i32, i1) nounwind
 declare i32 @getchar()
 declare i32 @putchar(i32)
 declare noalias i8* @malloc(i32) nounwind
@@ -6,7 +6,7 @@ declare void @free(i8*) nounwind
 define void @main() {
 main.0:
   %arr = call i8* @malloc(i32 65536)
-  call void @llvm.memset.i32(i8* %arr, i8 0, i32 65536, i32 1)
+  call void @llvm.memset.p0i8.i32(i8* %arr, i8 0, i32 65536, i32 1, i1 false)
   %head.0 = getelementptr i8* %arr, i32 32768
   %tape.1 = load i8* %head.0
   %tape.2 = add i8 %tape.1, 1
