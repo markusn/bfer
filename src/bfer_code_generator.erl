@@ -59,8 +59,8 @@
 %%=============================================================================
 %% API functions
 
-%% @doc Converts an bfer:ast() to LLVM ASM.
--spec generate_code(bfer:ast()) -> string().
+%% @doc Converts an bfer_lib:ast() to LLVM ASM.
+-spec generate_code(bfer_lib:ast()) -> string().
 generate_code(Tree) ->
   Steps     = steps(),
   {[],_S,C} = lists:foldl(fun(F, {N,S,AC}) -> F(N,S,AC) end, init(Tree), Steps),
@@ -73,7 +73,7 @@ generate_code(Tree) ->
 %% Initialization functions
 
 %% @hidden Create initial arguments
--spec init(bfer:ast()) -> {bfer:ast(), s(), string()}.
+-spec init(bfer_lib:ast()) -> {bfer_lib:ast(), s(), string()}.
 init(Tree) -> {Tree, #s{}, ""}.
 
 %% @hidden Returns the steps neccessary to convert an AST to LLVM Asm
@@ -88,7 +88,7 @@ steps() ->
 %% Code generation steps
 
 %% @hidden declarations and such
--spec header(bfer:ast(), s(), string()) -> {bfer:ast(), s(), string()}.
+-spec header(bfer_lib:ast(), s(), string()) -> {bfer_lib:ast(), s(), string()}.
 header(Nodes, #s{label=Label, head=Head} = S, _Code0 = "") ->
   Str = "declare void @llvm.memset.p0i8.i32(i8* nocapture, i8, i32, i32, i1) "
         "nounwind~n"
@@ -106,7 +106,8 @@ header(Nodes, #s{label=Label, head=Head} = S, _Code0 = "") ->
  {Nodes, S, Code}.
 
 %% @hidden Convert an ast() to LLVM ASM given state
--spec tree_to_string(bfer:ast(), s(), string()) -> {bfer:ast(), s(), string()}.
+-spec tree_to_string(bfer_lib:ast(), s(), string())
+                    -> {bfer_lib:ast(), s(), string()}.
 tree_to_string(Nodes = [], S, Code) ->
   {Nodes, S, Code};
 tree_to_string([Node | Nodes], #s{head=Head, tape=Tape0} = S0, Code0)
@@ -220,7 +221,8 @@ tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
   tree_to_string(Nodes, S, Code).
 
 %% @hidden return and free memory
--spec footer(bfer:ast(), s(), string()) -> {bfer:ast(), s(), string()}.
+-spec footer(bfer_lib:ast(), s(), string())
+            -> {bfer_lib:ast(), s(), string()}.
 footer(Nodes = [], S, Code0) ->
   FooterCode = "  call void @free(i8* %arr)\n"
                "  ret void\n"

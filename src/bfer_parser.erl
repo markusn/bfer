@@ -60,7 +60,7 @@
 %%      code_prim ::= nil | code
 %%      statement ::= left | right | add | sub | put | get
 %% @end
--spec parse([bfer:token()]) -> bfer:ast().
+-spec parse([bfer_lib:token()]) -> bfer_lib:ast().
 parse(Tokens) ->
   %% NOTE: At this point all tokens should be consumed otherwise the tokens were
   %%       not part of the language specified by the grammar.
@@ -73,7 +73,8 @@ parse(Tokens) ->
 %% @hidden code ::= statement code_prim
 %%                | begin_loop code end_loop code_prim
 %% @end
--spec code([bfer:token()], bfer:ast()) -> {[bfer:token()], bfer:ast()}.
+-spec code([bfer_lib:token()], bfer_lib:ast())
+          -> {[bfer_lib:token()], bfer_lib:ast()}.
 %% code ::= begin_loop code end_loop code_prim
 code([begin_loop | Tokens0], Ast)  ->
   %% We assert that the next symbol is end_loop
@@ -85,13 +86,15 @@ code([Token|_] = Tokens, Ast0) when ?IS_STATEMENT(Token) ->
   code_prim(Rest, Ast).
 
 %% @hidden code_prim ::= nil | code
--spec code_prim([bfer:token()], bfer:ast()) -> {[bfer:token()], bfer:ast()}.
+-spec code_prim([bfer_lib:token()], bfer_lib:ast())
+               -> {[bfer_lib:token()], bfer_lib:ast()}.
 code_prim([            ]          , Ast) -> {[], Ast};         %% nil
 code_prim([end_loop | _] = Tokens , Ast) -> {Tokens, Ast};     %% look ahead!
 code_prim([_        | _] = Tokens , Ast) -> code(Tokens, Ast). %% code
 
 %% @hidden statement ::= left | right | add | sub | put | get
--spec statement([bfer:token()], bfer:ast()) -> {[bfer:token()], bfer:ast()}.
+-spec statement([bfer_lib:token()], bfer_lib:ast())
+               -> {[bfer_lib:token()], bfer_lib:ast()}.
 statement([Token|Tokens], Ast) when ?IS_STATEMENT(Token) ->
   {Tokens, Ast ++ [Token]}.
 

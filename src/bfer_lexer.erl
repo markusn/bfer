@@ -42,7 +42,7 @@
 %%=============================================================================
 %% API functions
 
--spec lex(string()) -> [bfer:token()].
+-spec lex(string()) -> [bfer_lib:token()].
 lex([])         -> [                     ];
 lex("<" ++ Str) -> [left       | lex(Str)];
 lex(">" ++ Str) -> [right      | lex(Str)];

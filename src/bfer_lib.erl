@@ -32,29 +32,67 @@
 
 %%=============================================================================
 %% Module declaration
--module(bfer).
+-module(bfer_lib).
 
 %%=============================================================================
 %% Exports
--export([ main/1 ]).
+-export([ compile/1 ]).
+
+%%=============================================================================
+%% Types
+
+%% @doc Tokens
+-type token()     :: statement()
+                   | begin_loop
+                   | end_loop.
+%% @doc Abstract Syntax Tree nodes
+-type statement() :: left
+                   | right
+                   | add
+                   | sub
+                   | put
+                   | get.
+%% @doc Abstract Syntax Tree
+-type ast()       :: [statement() | {loop, ast()}].
+
+%%=============================================================================
+%% Type exports
+-export_type([ token/0
+             , statement/0
+             , ast/0
+             ]).
 
 %%=============================================================================
 %% API functions
 
-%% @doc Main method when invoked as escript, uses llc and cc to compile
-%%      brainfuck code into native code
-%% @end
-main([])        -> io:format("Usage: bfer IN OUT~n");
-main([In])      -> main([In, "a.out"]);
-main([In, Out]) ->
-  {ok, InFile}  = file:read_file(In),
-  Code          = bfer_lib:compile(binary_to_list(InFile)),
-  ok            = file:write_file(Out++".ll", Code),
-  ResLlc        = os:cmd("llc " ++ Out ++ ".ll"),
-  [io:format("~s~n", [ResLlc]) || ResLlc =/= []],
-  ResCc         = os:cmd("cc " ++ Out ++ ".s" ++ " -o " ++ Out),
-  [io:format("~s~n", [ResCc]) || ResCc =/= []].
+%% @doc Brainfuck to LLVM ASM
+-spec compile(string()) -> string().
+compile(Code) ->
+  lists:foldl(fun(F, Acc) -> F(Acc) end, Code, steps()).
 
+%%=============================================================================
+%% Internal functions
+
+%% @hidden Compilation steps
+-spec steps() -> [fun()].
+steps() ->
+  [ fun bfer_lexer:lex/1                    %% lex the raw BF
+  , fun bfer_parser:parse/1                 %% parse the tokens
+  , fun bfer_code_generator:generate_code/1 %% generate LLVM code
+  ].
+
+%%=============================================================================
+%% Test cases
+%%-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+compile_helloworld_test() ->
+  TestDir = code:lib_dir(bfer) ++ "/test/",
+  {ok, LLCode}  = file:read_file(TestDir ++ "helloworld.ll"),
+  {ok, BFCode}  = file:read_file(TestDir ++ "helloworld.bf"),
+  ?assertEqual(binary_to_list(LLCode), compile(binary_to_list(BFCode))).
+
+%%-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2
