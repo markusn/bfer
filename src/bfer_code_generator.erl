@@ -126,6 +126,7 @@ tree_to_string([Node | Nodes], #s{head=Head, tape=Tape0} = S0, Code0)
           , Tape, Head
           ],
   Str   = "~s"
+          "  ; add/sub~n"
           "  %tape.~p = load i8* %head.~p~n"
           "  %tape.~p = add i8 %tape.~p, ~p~n"
           "  store i8 %tape.~p, i8* %head.~p~n",
@@ -143,6 +144,7 @@ tree_to_string([Node | Nodes], #s{head=Head0} = S0, Code0)
           end,
   Args  = [ Code0, Head, Head0, Num ],
   Str   = "~s"
+          "  ; left/right~n"
           "  %head.~p = getelementptr i8* %head.~p, i32 ~p~n",
   Code  = format(Str, Args),
   S     = S0#s{head=Head},
@@ -150,8 +152,9 @@ tree_to_string([Node | Nodes], #s{head=Head0} = S0, Code0)
 tree_to_string([get | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
   Tape1 = Tape0 + 1,
   Tape  = Tape1 + 1,
-  Args  = [Code0, Tape0, Tape1, Tape0, Tape1, Head],
+  Args  = [Code0, Tape1, Tape, Tape1, Tape, Head],
   Str   = "~s"
+          "  ; get~n"
           "  %tape.~p = call i32 @getchar()~n"
           "  %tape.~p = trunc i32 %tape.~p to i8~n"
           "  store i8 %tape.~p, i8* %head.~p~n",
@@ -163,6 +166,7 @@ tree_to_string([put | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
   Tape  = Tape1 + 1,
   Args  = [Code0, Tape1, Head, Tape, Tape1, Tape],
   Str   = "~s"
+          "  ; put~n"
           "  %tape.~p = load i8* %head.~p~n"
           "  %tape.~p = sext i8 %tape.~p to i32~n"
           "  call i32 @putchar(i32 %tape.~p)~n",
@@ -241,25 +245,31 @@ format(S, A) -> lists:flatten(io_lib:format(S,A)).
 -include_lib("eunit/include/eunit.hrl").
 
 tree_to_string_test_() ->
-  [ ?_assertEqual("  %tape.1 = load i8* %head.0\n"
+  [ ?_assertEqual("  ; add/sub\n"
+                  "  %tape.1 = load i8* %head.0\n"
                   "  %tape.2 = add i8 %tape.1, 1\n"
                   "  store i8 %tape.2, i8* %head.0\n",
                   element(3,tree_to_string([add], #s{}, "")))
-  , ?_assertEqual("  %tape.1 = load i8* %head.0\n"
+  , ?_assertEqual("  ; add/sub\n"
+                  "  %tape.1 = load i8* %head.0\n"
                   "  %tape.2 = add i8 %tape.1, -1\n"
                   "  store i8 %tape.2, i8* %head.0\n",
                   element(3,tree_to_string([sub], #s{}, "")))
-  , ?_assertEqual("  %head.1 = getelementptr i8* %head.0, i32 -1\n",
+  , ?_assertEqual("  ; left/right\n"
+                  "  %head.1 = getelementptr i8* %head.0, i32 -1\n",
                   element(3,tree_to_string([left], #s{}, "")))
-  , ?_assertEqual("  %head.1 = getelementptr i8* %head.0, i32 1\n",
+  , ?_assertEqual("  ; left/right\n"
+                  "  %head.1 = getelementptr i8* %head.0, i32 1\n",
                   element(3,tree_to_string([right], #s{}, "")))
-  , ?_assertEqual("  %tape.1 = load i8* %head.0\n"
+  , ?_assertEqual("  ; put\n"
+                  "  %tape.1 = load i8* %head.0\n"
                   "  %tape.2 = sext i8 %tape.1 to i32\n"
                   "  call i32 @putchar(i32 %tape.2)\n",
                   element(3,tree_to_string([put], #s{}, "")))
-  , ?_assertEqual("  %tape.0 = call i32 @getchar()\n"
-                  "  %tape.1 = trunc i32 %tape.0 to i8\n"
-                  "  store i8 %tape.1, i8* %head.0\n",
+  , ?_assertEqual("  ; get\n"
+                  "  %tape.1 = call i32 @getchar()\n"
+                  "  %tape.2 = trunc i32 %tape.1 to i8\n"
+                  "  store i8 %tape.2, i8* %head.0\n",
                   element(3,tree_to_string([get], #s{}, "")))
   , ?_assertEqual("  br label %main.1\ ; [\n"
                   "  main.2: ; loop-body\n"
