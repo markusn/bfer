@@ -29,6 +29,11 @@ Used as a standalone escript `bfer` can generate native code if llvm and some ki
 bfer INPUT.ll OUTPUT
 ```
 
+## TODO
+* Nested loops does not work
+* Indent-level of generated ll code
+* External tests that verify output by issuing lli
+
 ## Author
 Markus Näsman (markus at botten dot org).
 
