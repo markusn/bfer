@@ -1,3 +1,4 @@
 language: erlang
 otp_release:
    - R16B
+script: "rebar compile && rebar -D NO_INTEGRATION_TESTS skip_deps=true eunit"
