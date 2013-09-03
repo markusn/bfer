@@ -39,10 +39,13 @@
 
 %%=============================================================================
 %% Records
--record(s, { head  = 0
-           , label = 0
-           , tape  = 0
-           , test  = 0
+-record(s, { head         = 0
+           , label        = 0
+           , tape         = 0
+           , test         = 0
+           , indent_depth = 0
+           , indent_level = 2
+           , indent_chr   = $ % space
            }).
 
 %%=============================================================================
@@ -89,20 +92,23 @@ steps() ->
 
 %% @hidden declarations and such
 -spec header(bfer_lib:ast(), s(), string()) -> {bfer_lib:ast(), s(), string()}.
-header(Nodes, #s{label=Label, head=Head} = S, _Code0 = "") ->
-  Str = "declare void @llvm.memset.p0i8.i32(i8* nocapture, i8, i32, i32, i1) "
-        "nounwind~n"
-        "declare i32 @getchar()~n"
-        "declare i32 @putchar(i32)~n"
-        "declare noalias i8* @malloc(i32) nounwind~n"
-        "declare void @free(i8*) nounwind~n"
-        "define void @main() {~n"
-        "main.~p:~n"
-        "  %arr = call i8* @malloc(i32 65536)~n"
-        "  call void @llvm.memset.p0i8.i32(i8* %arr, i8 0, i32 65536, i32 1, "
-        "i1 false)~n"
-        "  %head.~p = getelementptr i8* %arr, i32 32768~n",
- Code = format(Str, [Label, Head]),
+header(Nodes, #s{label=Label, head=Head, indent_depth=N} = S0, _Code0 = "") ->
+  S       = S0#s{indent_depth=N+(2*S0#s.indent_level)},
+  Indent0 = indent_str(S0#s{indent_depth=N+S0#s.indent_level}),
+  Indent  = indent_str(S),
+  Str     = "declare void @llvm.memset.p0i8.i32(i8* nocapture, i8, i32, i32, i1"
+            ") nounwind~n"
+            "declare i32 @getchar()~n"
+            "declare i32 @putchar(i32)~n"
+            "declare noalias i8* @malloc(i32) nounwind~n"
+            "declare void @free(i8*) nounwind~n"
+            "define void @main() {~n"
+            "~smain.~p:~n"
+            "~s%arr = call i8* @malloc(i32 65536)~n"
+            "~scall void @llvm.memset.p0i8.i32(i8* %arr, i8 0, i32 65536, i32 1"
+            ", i1 false)~n"
+            "~s%head.~p = getelementptr i8* %arr, i32 32768~n",
+ Code = format(Str, [Indent0, Label, Indent, Indent, Indent, Head]),
  {Nodes, S, Code}.
 
 %% @hidden Convert an ast() to LLVM ASM given state
@@ -120,16 +126,18 @@ tree_to_string([Node | Nodes], #s{head=Head, tape=Tape0} = S0, Code0)
             sub -> -1;
             add -> 1
           end,
+  Indent= indent_str(S0),
   Args  = [ Code0
-          , Tape1, Head
-          , Tape, Tape1, Num
-          , Tape, Head
+          , Indent
+          , Indent, Tape1, Head
+          , Indent, Tape, Tape1, Num
+          , Indent, Tape, Head
           ],
   Str   = "~s"
-          "  ; add/sub~n"
-          "  %tape.~p = load i8* %head.~p~n"
-          "  %tape.~p = add i8 %tape.~p, ~p~n"
-          "  store i8 %tape.~p, i8* %head.~p~n",
+          "~s; add/sub~n"
+          "~s%tape.~p = load i8* %head.~p~n"
+          "~s%tape.~p = add i8 %tape.~p, ~p~n"
+          "~sstore i8 %tape.~p, i8* %head.~p~n",
   Code  = format(Str, Args),
   S     = S0#s{tape=Tape},
     tree_to_string(Nodes, S, Code);
@@ -142,85 +150,98 @@ tree_to_string([Node | Nodes], #s{head=Head0} = S0, Code0)
             left  -> -1;
             right -> 1
           end,
-  Args  = [ Code0, Head, Head0, Num ],
+  Indent= indent_str(S0),
+  Args  = [ Code0
+          , Indent
+          , Indent, Head, Head0, Num
+          ],
   Str   = "~s"
-          "  ; left/right~n"
-          "  %head.~p = getelementptr i8* %head.~p, i32 ~p~n",
+          "~s; left/right~n"
+          "~s%head.~p = getelementptr i8* %head.~p, i32 ~p~n",
   Code  = format(Str, Args),
   S     = S0#s{head=Head},
   tree_to_string(Nodes, S, Code);
 tree_to_string([get | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
   Tape1 = Tape0 + 1,
   Tape  = Tape1 + 1,
-  Args  = [Code0, Tape1, Tape, Tape1, Tape, Head],
+  Indent= indent_str(S0),
+  Args  = [ Code0
+          , Indent
+          , Indent, Tape1
+          , Indent, Tape, Tape1
+          , Indent, Tape, Head
+          ],
   Str   = "~s"
-          "  ; get~n"
-          "  %tape.~p = call i32 @getchar()~n"
-          "  %tape.~p = trunc i32 %tape.~p to i8~n"
-          "  store i8 %tape.~p, i8* %head.~p~n",
+          "~s; get~n"
+          "~s%tape.~p = call i32 @getchar()~n"
+          "~s%tape.~p = trunc i32 %tape.~p to i8~n"
+          "~sstore i8 %tape.~p, i8* %head.~p~n",
   Code  = format(Str, Args),
   S     = S0#s{tape=Tape},
   tree_to_string(Nodes, S, Code);
 tree_to_string([put | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
   Tape1 = Tape0 + 1,
   Tape  = Tape1 + 1,
-  Args  = [Code0, Tape1, Head, Tape, Tape1, Tape],
+  Indent= indent_str(S0),
+  Args  = [ Code0
+          , Indent
+          , Indent, Tape1, Head
+          , Indent, Tape, Tape1
+          , Indent, Tape
+          ],
   Str   = "~s"
-          "  ; put~n"
-          "  %tape.~p = load i8* %head.~p~n"
-          "  %tape.~p = sext i8 %tape.~p to i32~n"
-          "  call i32 @putchar(i32 %tape.~p)~n",
+          "~s; put~n"
+          "~s%tape.~p = load i8* %head.~p~n"
+          "~s%tape.~p = sext i8 %tape.~p to i32~n"
+          "~scall i32 @putchar(i32 %tape.~p)~n",
   Code  = format(Str, Args),
   S     = S0#s{tape=Tape},
   tree_to_string(Nodes, S, Code);
 tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
-  #s{head  = Head0, label = Label0}  = S0,
+  #s{head  = Head0, label = Label0, indent_depth=N}  = S0,
+  Indent0            = indent_str(S0),
   Head1              = Head0 + 1,
   LoopTest           = Label0 + 1,
   LoopBody           = LoopTest + 1,
   LoopAfter          = LoopBody + 1,
-  S1                 = S0#s{head=Head1, label=LoopAfter},
+  S1                 = S0#s{ head         = Head1
+                           , label        = LoopAfter
+                           , indent_depth = N+S0#s.indent_level},
+  Indent1            = indent_str(S1),
   {[], S2, LoopCode} = tree_to_string(LoopNodes, S1, ""),
   Tape               = S2#s.tape + 1,
   Test               = S2#s.test + 1,
   Head2              = S2#s.head,
   Head               = S2#s.head + 1,
   Str  = "~s"
-         "  br label %main.~p ; [~n"
-         "  main.~p: ; loop-body~n"
+         "~sbr label %main.~p ; [~n"
+         "~smain.~p: ; loop-body~n"
          "~s"
-         "  br label %main.~p ; ]~n"
-         "  main.~p: ; loop-test~n"
-         "  %head.~p = phi i8* [%head.~p, %main.~p], [%head.~p, %main.~p]~n"
-         "  %tape.~p = load i8* %head.~p~n"
-         "  %test.~p = icmp eq i8 %tape.~p, 0~n"
-         "  br i1 %test.~p, label %main.~p, label %main.~p~n"
-         "  main.~p: ; loop-after~n"
-         "  %head.~p = phi i8* [%head.~p, %main.~p]~n",
+         "~sbr label %main.~p ; ]~n"
+         "~smain.~p: ; loop-test~n"
+         "~s%head.~p = phi i8* [%head.~p, %main.~p], [%head.~p, %main.~p]~n"
+         "~s%tape.~p = load i8* %head.~p~n"
+         "~s%test.~p = icmp eq i8 %tape.~p, 0~n"
+         "~sbr i1 %test.~p, label %main.~p, label %main.~p~n"
+         "~smain.~p: ; loop-after~n"
+         "~s%head.~p = phi i8* [%head.~p, %main.~p]~n",
   Args = [ Code0
-         , LoopTest
-         , LoopBody
+         , Indent0, LoopTest
+         , Indent0, LoopBody
          , LoopCode
-         , LoopTest
-         , LoopTest
-         , Head1
-         , Head0
-         , Label0
-         , Head2
-         , LoopBody
-         , Tape
-         , Head1
-         , Test
-         , Tape
-         , Test
-         , LoopAfter
-         , LoopBody
-         , LoopAfter
-         , Head
-         , Head1
-         , LoopTest
+         , Indent1, LoopTest
+         , Indent0, LoopTest
+         , Indent1, Head1, Head0, Label0, Head2, LoopBody
+         , Indent1, Tape, Head1
+         , Indent1, Test, Tape
+         , Indent1, Test, LoopAfter, LoopBody
+         , Indent0, LoopAfter
+         , Indent1, Head, Head1, LoopTest
          ],
-  S    = S2#s{tape=Tape, test=Test, head=Head},
+  S    = S2#s{ tape         = Tape
+             , test         = Test
+             , head         = Head
+             },
   Code = format(Str, Args),
   tree_to_string(Nodes, S, Code).
 
@@ -228,14 +249,20 @@ tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
 -spec footer(bfer_lib:ast(), s(), string())
             -> {bfer_lib:ast(), s(), string()}.
 footer(Nodes = [], S, Code0) ->
-  FooterCode = "  call void @free(i8* %arr)\n"
-               "  ret void\n"
-               "}\n",
-  Code       = format("~s~s", [Code0, FooterCode]),
+  Indent      = indent_str(S),
+  FooterCode0 = "~scall void @free(i8* %arr)\n"
+                "~sret void\n"
+                "}\n",
+  FooterCode  = format(FooterCode0, [Indent, Indent]),
+  Code        = format("~s~s", [Code0, FooterCode]),
   {Nodes, S, Code}.
 
 %%-----------------------------------------------------------------------------
 %% Helpers
+
+indent_str(#s{indent_chr = _IndentChr , indent_depth = 0} = _S) -> "";
+indent_str(#s{indent_chr = IndentChr  , indent_depth = N} = S)  ->
+  [IndentChr | indent_str(S#s{indent_depth=N-1})].
 
 format(S, A) -> lists:flatten(io_lib:format(S,A)).
 
@@ -244,42 +271,47 @@ format(S, A) -> lists:flatten(io_lib:format(S,A)).
 %%-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
+ident_str_test_() ->
+  [ ?_assertEqual(""   , indent_str(#s{indent_depth=0}))
+  , ?_assertEqual("  " , indent_str(#s{indent_depth=2}))
+  ].
+
 tree_to_string_test_() ->
-  [ ?_assertEqual("  ; add/sub\n"
-                  "  %tape.1 = load i8* %head.0\n"
-                  "  %tape.2 = add i8 %tape.1, 1\n"
-                  "  store i8 %tape.2, i8* %head.0\n",
+  [ ?_assertEqual("; add/sub\n"
+                  "%tape.1 = load i8* %head.0\n"
+                  "%tape.2 = add i8 %tape.1, 1\n"
+                  "store i8 %tape.2, i8* %head.0\n",
                   element(3,tree_to_string([add], #s{}, "")))
-  , ?_assertEqual("  ; add/sub\n"
-                  "  %tape.1 = load i8* %head.0\n"
-                  "  %tape.2 = add i8 %tape.1, -1\n"
-                  "  store i8 %tape.2, i8* %head.0\n",
+  , ?_assertEqual("; add/sub\n"
+                  "%tape.1 = load i8* %head.0\n"
+                  "%tape.2 = add i8 %tape.1, -1\n"
+                  "store i8 %tape.2, i8* %head.0\n",
                   element(3,tree_to_string([sub], #s{}, "")))
-  , ?_assertEqual("  ; left/right\n"
-                  "  %head.1 = getelementptr i8* %head.0, i32 -1\n",
+  , ?_assertEqual("; left/right\n"
+                  "%head.1 = getelementptr i8* %head.0, i32 -1\n",
                   element(3,tree_to_string([left], #s{}, "")))
-  , ?_assertEqual("  ; left/right\n"
-                  "  %head.1 = getelementptr i8* %head.0, i32 1\n",
+  , ?_assertEqual("; left/right\n"
+                  "%head.1 = getelementptr i8* %head.0, i32 1\n",
                   element(3,tree_to_string([right], #s{}, "")))
-  , ?_assertEqual("  ; put\n"
-                  "  %tape.1 = load i8* %head.0\n"
-                  "  %tape.2 = sext i8 %tape.1 to i32\n"
-                  "  call i32 @putchar(i32 %tape.2)\n",
+  , ?_assertEqual("; put\n"
+                  "%tape.1 = load i8* %head.0\n"
+                  "%tape.2 = sext i8 %tape.1 to i32\n"
+                  "call i32 @putchar(i32 %tape.2)\n",
                   element(3,tree_to_string([put], #s{}, "")))
-  , ?_assertEqual("  ; get\n"
-                  "  %tape.1 = call i32 @getchar()\n"
-                  "  %tape.2 = trunc i32 %tape.1 to i8\n"
-                  "  store i8 %tape.2, i8* %head.0\n",
+  , ?_assertEqual("; get\n"
+                  "%tape.1 = call i32 @getchar()\n"
+                  "%tape.2 = trunc i32 %tape.1 to i8\n"
+                  "store i8 %tape.2, i8* %head.0\n",
                   element(3,tree_to_string([get], #s{}, "")))
-  , ?_assertEqual("  br label %main.1\ ; [\n"
-                  "  main.2: ; loop-body\n"
+  , ?_assertEqual("br label %main.1\ ; [\n"
+                  "main.2: ; loop-body\n"
                   "  br label %main.1 ; ]\n"
-                  "  main.1: ; loop-test\n"
+                  "main.1: ; loop-test\n"
                   "  %head.1 = phi i8* [%head.0, %main.0], [%head.1, %main.2]\n"
                   "  %tape.1 = load i8* %head.1\n"
                   "  %test.1 = icmp eq i8 %tape.1, 0\n"
                   "  br i1 %test.1, label %main.3, label %main.2\n"
-                  "  main.3: ; loop-after\n"
+                  "main.3: ; loop-after\n"
                   "  %head.2 = phi i8* [%head.1, %main.1]\n",
                   element(3,tree_to_string([{loop, []}], #s{}, "")))
   ].

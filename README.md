@@ -31,7 +31,6 @@ bfer INPUT.ll OUTPUT
 
 ## TODO
 * Nested loops does not work
-* Indent-level of generated ll code
 
 ## Author
 Markus Näsman (markus at botten dot org).
