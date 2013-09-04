@@ -56,7 +56,25 @@ echo2_test_() ->
     setup("echo2.bf"),
     teardown(),
     fun(Fname) ->
-      ?_assertCmdOutput("echo chamber\n", "echo echo chamber | lli " ++ Fname)
+        ?_assertCmdOutput("echo chamber\n", "echo echo chamber | lli " ++ Fname)
+    end
+  }.
+
+rot13_test_() ->
+  { setup,
+    setup("rot13.bf"),
+    teardown(),
+    fun(Fname) ->
+        [ ?_assertCmdOutput("ova\n",
+                            "echo bin | lli " ++ Fname)
+        , ?_assertCmdOutput("abjurer\n",
+                            "echo nowhere | lli " ++ Fname)
+        , ?_assertCmdOutput("What\n",
+                            "echo Jung | lli " ++ Fname)
+        , ?_assertCmdOutput("The Quick Brown Fox Jumps Over The Lazy Dog\n",
+                            "echo Gur Dhvpx Oebja Sbk Whzcf Bire Gur Ynml Qbt "
+                            "| lli " ++ Fname)
+        ]
     end
   }.
 
@@ -65,10 +83,10 @@ echo2_test_() ->
 
 setup(BfFile) ->
   fun() ->
-    Code  = bfer_lib:compile(read_file(BfFile)),
-    Fname = string:strip(?cmd("mktemp"), right, $\n),
-    ok    = file:write_file(Fname, Code),
-    Fname
+      Code  = bfer_lib:compile(read_file(BfFile)),
+      Fname = string:strip(?cmd("mktemp"), right, $\n),
+      ok    = file:write_file(Fname, Code),
+      Fname
   end.
 
 teardown() -> fun(Fname) -> ok = file:delete(Fname) end.
@@ -80,6 +98,7 @@ read_file(Fname) ->
 
 -endif.
 
+%%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2
 %%% End:

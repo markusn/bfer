@@ -15,7 +15,7 @@ rebar compile
 To build as a standalone escript:
 
 ```bash
-rebar escriptize
+rebar compile escriptize
 ```
 
 ## Usage
@@ -30,7 +30,7 @@ bfer INPUT.ll OUTPUT
 ```
 
 ## TODO
-* Nested loops does not work
+* Minimze generated code
 
 ## Author
 Markus Näsman (markus at botten dot org).

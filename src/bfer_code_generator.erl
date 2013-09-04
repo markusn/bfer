@@ -203,12 +203,13 @@ tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
   Head1              = Head0 + 1,
   LoopTest           = Label0 + 1,
   LoopBody           = LoopTest + 1,
-  LoopAfter          = LoopBody + 1,
   S1                 = S0#s{ head         = Head1
-                           , label        = LoopAfter
+                           , label        = LoopBody
                            , indent_depth = N+S0#s.indent_level},
   Indent1            = indent_str(S1),
   {[], S2, LoopCode} = tree_to_string(LoopNodes, S1, ""),
+  LastLabel          = S2#s.label,
+  LoopAfter          = LastLabel + 1,
   Tape               = S2#s.tape + 1,
   Test               = S2#s.test + 1,
   Head2              = S2#s.head,
@@ -231,7 +232,7 @@ tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
          , LoopCode
          , Indent1, LoopTest
          , Indent0, LoopTest
-         , Indent1, Head1, Head0, Label0, Head2, LoopBody
+         , Indent1, Head1, Head0, Label0, Head2, LastLabel
          , Indent1, Tape, Head1
          , Indent1, Test, Tape
          , Indent1, Test, LoopAfter, LoopBody
@@ -240,6 +241,7 @@ tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
          ],
   S    = S2#s{ tape         = Tape
              , test         = Test
+             , label        = LoopAfter
              , head         = Head
              },
   Code = format(Str, Args),
@@ -314,8 +316,31 @@ tree_to_string_test_() ->
                   "main.3: ; loop-after\n"
                   "  %head.2 = phi i8* [%head.1, %main.1]\n",
                   element(3,tree_to_string([{loop, []}], #s{}, "")))
+  , ?_assertEqual(
+       "br label %main.1 ; [\n"
+       "main.2: ; loop-body\n"
+       "  br label %main.3 ; [\n"
+       "  main.4: ; loop-body\n"
+       "    br label %main.3 ; ]\n"
+       "  main.3: ; loop-test\n"
+       "    %head.2 = phi i8* [%head.1, %main.2], [%head.2, %main.4]\n"
+       "    %tape.1 = load i8* %head.2\n"
+       "    %test.1 = icmp eq i8 %tape.1, 0\n"
+       "    br i1 %test.1, label %main.5, label %main.4\n"
+       "  main.5: ; loop-after\n"
+       "    %head.3 = phi i8* [%head.2, %main.3]\n"
+       "  br label %main.1 ; ]\n"
+       "main.1: ; loop-test\n"
+       "  %head.1 = phi i8* [%head.0, %main.0], [%head.3, %main.5]\n"
+       "  %tape.2 = load i8* %head.1\n"
+       "  %test.2 = icmp eq i8 %tape.2, 0\n"
+       "  br i1 %test.2, label %main.6, label %main.2\n"
+       "main.6: ; loop-after\n"
+       "  %head.4 = phi i8* [%head.1, %main.1]\n",
+       element(3, tree_to_string([{loop, [{loop, []}]}], #s{}, "")))
   ].
 
+%%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2
 %%% End:
