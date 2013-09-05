@@ -30,7 +30,8 @@ bfer INPUT.ll OUTPUT
 ```
 
 ## TODO
-* Minimze generated code
+* Minimze generated code (++ becomes +2 instead of two +1 and so on)
+* Don't flatten until the end
 
 ## Author
 Markus Näsman (markus at botten dot org).
