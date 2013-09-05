@@ -243,6 +243,7 @@ tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
              , test         = Test
              , label        = LoopAfter
              , head         = Head
+             , indent_depth = S1#s.indent_depth
              },
   Code = format(Str, Args),
   tree_to_string(Nodes, S, Code).
