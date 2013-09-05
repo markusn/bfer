@@ -140,7 +140,7 @@ tree_to_string([Node | Nodes], #s{head=Head, tape=Tape0} = S0, Code0)
           "~sstore i8 %tape.~p, i8* %head.~p~n",
   Code  = format(Str, Args),
   S     = S0#s{tape=Tape},
-    tree_to_string(Nodes, S, Code);
+  tree_to_string(Nodes, S, Code);
 tree_to_string([Node | Nodes], #s{head=Head0} = S0, Code0)
   when Node =:= left;
        Node =:= right
