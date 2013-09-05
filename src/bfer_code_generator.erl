@@ -305,7 +305,7 @@ tree_to_string_test_() ->
                   "%tape.2 = trunc i32 %tape.1 to i8\n"
                   "store i8 %tape.2, i8* %head.0\n",
                   element(3,tree_to_string([get], #s{}, "")))
-  , ?_assertEqual("br label %main.1\ ; [\n"
+  , ?_assertEqual("br label %main.1 ; [\n"
                   "main.2: ; loop-body\n"
                   "  br label %main.1 ; ]\n"
                   "main.1: ; loop-test\n"
