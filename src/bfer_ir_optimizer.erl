@@ -61,7 +61,9 @@ optimize(Code) ->
 %% Internal functions
 
 steps() ->
-  [ fun minimize/1 ].
+  [ fun minimize/1
+  , fun remove_nops/1
+  ].
 
 %% @hidden Minimize moves and adds
 minimize([])                             ->
@@ -75,6 +77,16 @@ minimize([{loop, LoopNodes} | Nodes])    ->
 minimize([Node | Nodes])                 ->
   [Node | minimize(Nodes)].
 
+%% @hidden Remove all null moves and adds
+remove_nops([])                                             ->
+  [];
+remove_nops([{loop, LoopNodes} | Nodes])                    ->
+  [{loop, remove_nops(LoopNodes)} | remove_nops(Nodes)];
+remove_nops([{Op, 0} | Nodes]) when Op =:= add; Op =:= move ->
+  remove_nops(Nodes);
+remove_nops([Node | Nodes])                                 ->
+  [Node | remove_nops(Nodes)].
+
 %%=============================================================================
 %% Test cases
 %%-ifdef(TEST).
@@ -84,7 +96,8 @@ optimize_test_() ->
   [ ?_assertEqual(
        [{move, 3}, put, {loop, [{add, 2}]}, get],
        optimize([{move, 1}, {move, 1}, {move, -1}, {move, 1}, {move, 1},
-                 put, {loop, [{add, 1}, {add, -1}, {add, 1}, {add, 1}]}, get]))
+                 put, {loop, [{add, 1}, {add, -1}, {add, 1}, {add, 1}]}, get,
+                 {move, 0}]))
   ].
 
 %%% Local Variables:
