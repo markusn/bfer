@@ -92,7 +92,7 @@ setup(BfFile) ->
 teardown() -> fun(Fname) -> ok = file:delete(Fname) end.
 
 read_file(Fname) ->
-  TestDir           = code:lib_dir(bfer) ++ "/test/",
+  TestDir           = code:lib_dir(bfer) ++ "/test/fixtures/",
   {ok, FileContent} = file:read_file(TestDir ++ Fname),
   binary_to_list(FileContent).
 

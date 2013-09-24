@@ -87,7 +87,7 @@ steps() ->
 -include_lib("eunit/include/eunit.hrl").
 
 compile_helloworld_test() ->
-  TestDir       = code:lib_dir(bfer) ++ "/test/",
+  TestDir       = code:lib_dir(bfer) ++ "/test/fixtures/",
   {ok, LLCode}  = file:read_file(TestDir ++ "helloworld.ll"),
   {ok, BFCode}  = file:read_file(TestDir ++ "helloworld.bf"),
   ?assertEqual(binary_to_list(LLCode), compile(binary_to_list(BFCode))).
