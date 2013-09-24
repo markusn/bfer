@@ -32,7 +32,7 @@
 
 %%=============================================================================
 %% Module declaration
--module(bfer_code_generator).
+-module(bfer_llvm_generator).
 
 %%=============================================================================
 %% Defines
@@ -62,8 +62,8 @@
 %%=============================================================================
 %% API functions
 
-%% @doc Converts an bfer_lib:ast() to LLVM ASM.
--spec generate_code(bfer_lib:ast()) -> string().
+%% @doc Converts bfer_lib:ir() to LLVM ASM.
+-spec generate_code(bfer_lib:ir()) -> string().
 generate_code(Tree) ->
   Steps     = steps(),
   {[],_S,C} = lists:foldl(fun(F, {N,S,AC}) -> F(N,S,AC) end, init(Tree), Steps),
@@ -79,11 +79,11 @@ generate_code(Tree) ->
 -spec init(bfer_lib:ast()) -> {bfer_lib:ast(), s(), string()}.
 init(Tree) -> {Tree, #s{}, ""}.
 
-%% @hidden Returns the steps neccessary to convert an AST to LLVM Asm
+%% @hidden Returns the steps neccessary to convert IR to LLVM Asm
 -spec steps() -> [fun()].
 steps() ->
  [ fun header/3         %% Add header
- , fun tree_to_string/3 %% Convert AST to code
+ , fun tree_to_string/3 %% Convert IR to code
  , fun footer/3         %% Add footer
  ].
 
@@ -111,21 +111,14 @@ header(Nodes, #s{label=Label, head=Head, indent_depth=N} = S0, _Code0 = "") ->
  Code = format(Str, [Indent0, Label, Indent, Indent, Indent, Head]),
  {Nodes, S, Code}.
 
-%% @hidden Convert an ast() to LLVM ASM given state
--spec tree_to_string(bfer_lib:ast(), s(), string())
-                    -> {bfer_lib:ast(), s(), string()}.
+%% @hidden Convert an ir() to LLVM ASM given state
+-spec tree_to_string(bfer_lib:ir(), s(), string())
+                    -> {bfer_lib:ir(), s(), string()}.
 tree_to_string(Nodes = [], S, Code) ->
   {Nodes, S, Code};
-tree_to_string([Node | Nodes], #s{head=Head, tape=Tape0} = S0, Code0)
-  when Node =:= add;
-       Node =:= sub
-       ->
+tree_to_string([{add, Num} | Nodes], #s{head=Head, tape=Tape0} = S0, Code0) ->
   Tape1 = Tape0 + 1,
   Tape  = Tape1 + 1,
-  Num   = case Node of
-            sub -> -1;
-            add -> 1
-          end,
   Indent= indent_str(S0),
   Args  = [ Code0
           , Indent
@@ -141,15 +134,8 @@ tree_to_string([Node | Nodes], #s{head=Head, tape=Tape0} = S0, Code0)
   Code  = format(Str, Args),
   S     = S0#s{tape=Tape},
   tree_to_string(Nodes, S, Code);
-tree_to_string([Node | Nodes], #s{head=Head0} = S0, Code0)
-  when Node =:= left;
-       Node =:= right
-       ->
+tree_to_string([{move, Num} | Nodes], #s{head=Head0} = S0, Code0) ->
   Head  = Head0 + 1,
-  Num   = case Node of
-            left  -> -1;
-            right -> 1
-          end,
   Indent= indent_str(S0),
   Args  = [ Code0
           , Indent
@@ -249,8 +235,8 @@ tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
   tree_to_string(Nodes, S, Code).
 
 %% @hidden return and free memory
--spec footer(bfer_lib:ast(), s(), string())
-            -> {bfer_lib:ast(), s(), string()}.
+-spec footer(bfer_lib:ir(), s(), string())
+            -> {bfer_lib:ir(), s(), string()}.
 footer(Nodes = [], S, Code0) ->
   Indent      = indent_str(S),
   FooterCode0 = "~scall void @free(i8* %arr)\n"
@@ -284,18 +270,18 @@ tree_to_string_test_() ->
                   "%tape.1 = load i8* %head.0\n"
                   "%tape.2 = add i8 %tape.1, 1\n"
                   "store i8 %tape.2, i8* %head.0\n",
-                  element(3,tree_to_string([add], #s{}, "")))
+                  element(3,tree_to_string([{add, 1}], #s{}, "")))
   , ?_assertEqual("; add/sub\n"
                   "%tape.1 = load i8* %head.0\n"
                   "%tape.2 = add i8 %tape.1, -1\n"
                   "store i8 %tape.2, i8* %head.0\n",
-                  element(3,tree_to_string([sub], #s{}, "")))
+                  element(3,tree_to_string([{add, -1}], #s{}, "")))
   , ?_assertEqual("; left/right\n"
                   "%head.1 = getelementptr i8* %head.0, i32 -1\n",
-                  element(3,tree_to_string([left], #s{}, "")))
+                  element(3,tree_to_string([{move, -1}], #s{}, "")))
   , ?_assertEqual("; left/right\n"
                   "%head.1 = getelementptr i8* %head.0, i32 1\n",
-                  element(3,tree_to_string([right], #s{}, "")))
+                  element(3,tree_to_string([{move, 1}], #s{}, "")))
   , ?_assertEqual("; put\n"
                   "%tape.1 = load i8* %head.0\n"
                   "%tape.2 = sext i8 %tape.1 to i32\n"

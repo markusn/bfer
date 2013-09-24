@@ -44,11 +44,15 @@
 %% @doc Main method when invoked as escript, uses llc and cc to compile
 %%      brainfuck code into native code
 %% @end
-main([])        -> io:format("Usage: bfer IN OUT~n");
-main([In])      -> main([In, "a.out"]);
-main([In, Out]) ->
+main([])              -> io:format("Usage: bfer [-o] IN OUT~n");
+main([In])            -> compile(In, false, "a.out");
+main(["-o", In])      -> compile(In, true, "a.out");
+main([In, Out])       -> compile(In, false, Out);
+main(["-o", In, Out]) -> compile(In, true, Out).
+
+compile(In, Optimize, Out) ->
   {ok, InFile}  = file:read_file(In),
-  Code          = bfer_lib:compile(binary_to_list(InFile)),
+  Code          = bfer_lib:compile(binary_to_list(InFile), Optimize),
   ok            = file:write_file(Out++".ll", Code),
   ResLlc        = os:cmd("llc " ++ Out ++ ".ll"),
   [io:format("~s~n", [ResLlc]) || ResLlc =/= []],

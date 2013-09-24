@@ -48,15 +48,25 @@ hello_world_test_() ->
   { setup,
     setup("helloworld.bf"),
     teardown(),
-    fun(Fname) -> ?_assertCmdOutput("Hello World!\n", "lli " ++ Fname) end
+    fun(Fnames) ->
+        lists:map(fun(Fname) ->
+                      ?_assertCmdOutput("Hello World!\n", "lli " ++ Fname)
+                  end,
+                  Fnames)
+    end
   }.
 
 echo2_test_() ->
   { setup,
     setup("echo2.bf"),
     teardown(),
-    fun(Fname) ->
-        ?_assertCmdOutput("echo chamber\n", "echo echo chamber | lli " ++ Fname)
+    fun(Fnames) ->
+        lists:map(
+          fun(Fname) ->
+              ?_assertCmdOutput("echo chamber\n", "echo echo chamber | lli " ++
+                                  Fname)
+          end,
+          Fnames)
     end
   }.
 
@@ -64,17 +74,23 @@ rot13_test_() ->
   { setup,
     setup("rot13.bf"),
     teardown(),
-    fun(Fname) ->
-        [ ?_assertCmdOutput("ova\n",
-                            "echo bin | lli " ++ Fname)
-        , ?_assertCmdOutput("abjurer\n",
-                            "echo nowhere | lli " ++ Fname)
-        , ?_assertCmdOutput("What\n",
-                            "echo Jung | lli " ++ Fname)
-        , ?_assertCmdOutput("The Quick Brown Fox Jumps Over The Lazy Dog\n",
-                            "echo Gur Dhvpx Oebja Sbk Whzcf Bire Gur Ynml Qbt "
-                            "| lli " ++ Fname)
-        ]
+    fun(Fnames) ->
+        lists:map(
+          fun(Fname) ->
+              [ ?_assertCmdOutput("ova\n",
+                                  "echo bin | lli " ++ Fname)
+              , ?_assertCmdOutput("abjurer\n",
+                                  "echo nowhere | lli " ++ Fname)
+              , ?_assertCmdOutput("What\n",
+                                  "echo Jung | lli " ++ Fname)
+              , ?_assertCmdOutput("The Quick Brown Fox Jumps Over The Lazy "
+                                  "Dog\n",
+                                  "echo Gur Dhvpx Oebja Sbk Whzcf Bire Gur "
+                                  "Ynml Qbt "
+                                  "| lli " ++ Fname)
+              ]
+          end,
+          Fnames)
     end
   }.
 
@@ -83,13 +99,20 @@ rot13_test_() ->
 
 setup(BfFile) ->
   fun() ->
-      Code  = bfer_lib:compile(read_file(BfFile)),
-      Fname = string:strip(?cmd("mktemp"), right, $\n),
-      ok    = file:write_file(Fname, Code),
-      Fname
+      BfCode   = read_file(BfFile),
+      Code     = bfer_lib:compile(BfCode, false),
+      CodeOpt  = bfer_lib:compile(BfCode, true),
+      Fname    = string:strip(?cmd("mktemp"), right, $\n),
+      FnameOpt = string:strip(?cmd("mktemp"), right, $\n),
+      ok       = file:write_file(Fname, Code),
+      ok       = file:write_file(FnameOpt, CodeOpt),
+      [Fname, FnameOpt]
   end.
 
-teardown() -> fun(Fname) -> ok = file:delete(Fname) end.
+teardown() ->
+  fun(Fnames) ->
+      lists:foreach(fun(Fname) -> ok = file:delete(Fname) end, Fnames)
+  end.
 
 read_file(Fname) ->
   TestDir           = code:lib_dir(bfer) ++ "/test/fixtures/",

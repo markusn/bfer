@@ -32,83 +32,61 @@
 
 %%=============================================================================
 %% Module declaration
--module(bfer_lib).
+-module(bfer_ir_optimizer).
 
 %%=============================================================================
-%% Exports
--export([ compile/2 ]).
+%% Defines
+
+%%=============================================================================
+%% Records
 
 %%=============================================================================
 %% Types
 
-%% @doc Tokens
--type token()     :: statement()
-                   | begin_loop
-                   | end_loop.
-%% @doc Abstract Syntax Tree nodes
--type statement() :: left
-                   | right
-                   | add
-                   | sub
-                   | put
-                   | get.
-%% @doc Abstract Syntax Tree
--type ast()       :: [statement() | {loop, ast()}].
-
-%% @doc IR code
--type ir()        :: [ put
-                     | get
-                     | {move, integer()}
-                     | {add, integer()}
-                     | {loop, ir()}
-                     ].
-
 %%=============================================================================
-%% Type exports
--export_type([ token/0
-             , statement/0
-             , ast/0
-             , ir/0
-             ]).
+%% Exports
+
+-export([ optimize/1 ]).
 
 %%=============================================================================
 %% API functions
 
-%% @doc Brainfuck to LLVM ASM
--spec compile(string(), boolean()) -> string().
-compile(Code, Optimize) ->
-  lists:foldl(fun(F, Acc) -> F(Acc) end, Code, steps(Optimize)).
+%% @doc Optimize ir()
+-spec optimize(bfer_lib:ir()) -> bfer_lib:ir().
+
+optimize(Code) ->
+  lists:foldl(fun(F, Acc) -> F(Acc) end, Code, steps()).
 
 %%=============================================================================
 %% Internal functions
 
-%% @hidden Compilation steps
--spec steps(boolean())-> [fun()].
-steps(Optimize) ->
-  [ fun bfer_lexer:lex/1                    %% lex the raw BF
-  , fun bfer_parser:parse/1                 %% parse the tokens
-  , fun bfer_ir_generator:generate_code/1   %% generate IR
-  , optimizer(Optimize)                     %% Optimize if specified
-  , fun bfer_llvm_generator:generate_code/1 %% generate LLVM code
-  ].
+steps() ->
+  [ fun minimize/1 ].
 
-optimizer(false) -> fun(X) -> X end;
-optimizer(true)  -> fun bfer_ir_optimizer:optimize/1.
+%% @hidden Minimize moves and adds
+minimize([])                             ->
+  [];
+minimize([{move, X}, {move, Y} | Nodes]) ->
+  minimize([{move, X+Y} | Nodes]);
+minimize([{add, X}, {add, Y} | Nodes])   ->
+  minimize([{add, X+Y} | Nodes]);
+minimize([{loop, LoopNodes} | Nodes])    ->
+  [{loop, minimize(LoopNodes)} | minimize(Nodes)];
+minimize([Node | Nodes])                 ->
+  [Node | minimize(Nodes)].
 
 %%=============================================================================
 %% Test cases
 %%-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-compile_helloworld_test() ->
-  TestDir         = code:lib_dir(bfer) ++ "/test/fixtures/",
-  {ok, BFCode}    = file:read_file(TestDir ++ "helloworld.bf"),
-  {ok, LLCode}    = file:read_file(TestDir ++ "helloworld.ll"),
-  {ok, LLCodeOpt} = file:read_file(TestDir ++ "helloworld.optimized.ll"),
-  ?assertEqual(binary_to_list(LLCode), compile(binary_to_list(BFCode), false)),
-  ?assertEqual(binary_to_list(LLCodeOpt),compile(binary_to_list(BFCode), true)).
+optimize_test_() ->
+  [ ?_assertEqual(
+       [{move, 3}, put, {loop, [{add, 2}]}, get],
+       optimize([{move, 1}, {move, 1}, {move, -1}, {move, 1}, {move, 1},
+                 put, {loop, [{add, 1}, {add, -1}, {add, 1}, {add, 1}]}, get]))
+  ].
 
-%%-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2

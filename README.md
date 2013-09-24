@@ -26,11 +26,12 @@ takes Brainfuck code as a string and returns LLVM IR as a string.
 Used as a standalone escript `bfer` can generate native code if llvm and some kind of cc is installed:
 
 ```bash
-bfer INPUT.ll OUTPUT
+bfer [-o] INPUT.bf OUTPUT
 ```
 
+Specifying -o "optimizes" the generated LLVM IR.
+
 ## TODO
-* Minimze generated code (++ becomes +2 instead of two +1 and so on)
 * Don't flatten until the end
 
 ## Author
