@@ -1,6 +1,7 @@
 bfer
 ==========
 [![Build Status](https://travis-ci.org/markusn/bfer.png?branch=master)](https://travis-ci.org/markusn/bfer)
+[![Coverage Status](https://coveralls.io/repos/markusn/bfer/badge.png?branch=master)](https://coveralls.io/r/markusn/bfer?branch=master)
 
 Brainfuck to LLVM IR compiler written in Erlang.
 
