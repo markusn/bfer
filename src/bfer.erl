@@ -53,7 +53,7 @@ main([], _Llc, _Cc)            -> io:format("Usage: bfer [-o] IN OUT~n");
 main([In, Out], Llc, Cc)       -> compile(In, false, Out, Llc, Cc);
 main(["-o", In, Out], Llc, Cc) -> compile(In, true, Out, Llc, Cc).
 
-compile(In, Optimize, Out, Cc, Llc) ->
+compile(In, Optimize, Out, Llc, Cc) ->
   {ok, InFile}  = file:read_file(In),
   Code          = bfer_lib:compile(binary_to_list(InFile), Optimize),
   ok            = file:write_file(Out++".ll", Code),
