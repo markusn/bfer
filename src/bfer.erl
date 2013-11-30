@@ -44,20 +44,45 @@
 %% @doc Main method when invoked as escript, uses llc and cc to compile
 %%      brainfuck code into native code
 %% @end
-main([])              -> io:format("Usage: bfer [-o] IN OUT~n");
-main([In])            -> compile(In, false, "a.out");
-main(["-o", In])      -> compile(In, true, "a.out");
-main([In, Out])       -> compile(In, false, Out);
-main(["-o", In, Out]) -> compile(In, true, Out).
+main(Args) -> main(Args, "llc", "cc").
 
-compile(In, Optimize, Out) ->
+%%=============================================================================
+%% Internal functions
+
+main([], _Llc, _Cc)            -> io:format("Usage: bfer [-o] IN OUT~n");
+main([In, Out], Llc, Cc)       -> compile(In, false, Out, Llc, Cc);
+main(["-o", In, Out], Llc, Cc) -> compile(In, true, Out, Llc, Cc).
+
+compile(In, Optimize, Out, Cc, Llc) ->
   {ok, InFile}  = file:read_file(In),
   Code          = bfer_lib:compile(binary_to_list(InFile), Optimize),
   ok            = file:write_file(Out++".ll", Code),
-  ResLlc        = os:cmd("llc " ++ Out ++ ".ll"),
+  ResLlc        = os:cmd(Llc ++ " " ++ Out ++ ".ll"),
   [io:format("~s~n", [ResLlc]) || ResLlc =/= []],
-  ResCc         = os:cmd("cc " ++ Out ++ ".s" ++ " -o " ++ Out),
-  [io:format("~s~n", [ResCc]) || ResCc =/= []].
+  ResCc         = os:cmd(Cc ++ " " ++ Out ++ ".s" ++ " -o " ++ Out),
+  [io:format("~s~n", [ResCc]) || ResCc =/= []],
+  ok.
+
+%%=============================================================================
+%% Test cases
+%%-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+%% Just assert that nothing crashes
+main_test_() ->
+  TestDir  = code:lib_dir(bfer) ++ "/test/fixtures/",
+  TestFile = TestDir ++ "helloworld.bf",
+  { setup
+  , fun()        -> string:strip(?cmd("mktemp"), right, $\n) end
+  , fun(Fname)   -> ok = file:delete(Fname) end
+  , fun(TmpFile) ->
+        [ ?_assertEqual(ok, main([], "echo", "echo"))
+        , ?_assertEqual(ok, main([TestFile, TmpFile], "echo", "echo"))
+        , ?_assertEqual(ok, main(["-o", TestFile, TmpFile], "echo", "echo"))
+        ]
+    end
+  }.
+
 
 %%% Local Variables:
 %%% allout-layout: t
