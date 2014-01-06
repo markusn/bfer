@@ -32,9 +32,6 @@ bfer [-o] INPUT.bf OUTPUT
 
 Specifying -o "optimizes" the generated LLVM IR.
 
-## TODO
-* Don't flatten until the end
-
 ## Author
 Markus Näsman (markus at botten dot org).
 

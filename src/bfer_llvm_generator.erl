@@ -39,6 +39,7 @@
 
 %%=============================================================================
 %% Records
+
 -record(s, { head         = 0
            , label        = 0
            , tape         = 0
@@ -51,7 +52,6 @@
 %%=============================================================================
 %% Types
 
-%% @doc Code generator state
 -type s() :: #s{}.
 
 %%=============================================================================
@@ -67,7 +67,7 @@
 generate_code(Tree) ->
   Steps     = steps(),
   {[],_S,C} = lists:foldl(fun(F, {N,S,AC}) -> F(N,S,AC) end, init(Tree), Steps),
-  C.
+  lists:flatten(C).
 
 %%=============================================================================
 %% Internal functions
@@ -76,14 +76,14 @@ generate_code(Tree) ->
 %% Initialization functions
 
 %% @hidden Create initial arguments
--spec init(bfer_lib:ast()) -> {bfer_lib:ast(), s(), string()}.
+-spec init(bfer_lib:ast()) -> {bfer_lib:ast(), s(), io_lib:chars()}.
 init(Tree) -> {Tree, #s{}, ""}.
 
 %% @hidden Returns the steps neccessary to convert IR to LLVM Asm
 -spec steps() -> [fun()].
 steps() ->
  [ fun header/3         %% Add header
- , fun tree_to_string/3 %% Convert IR to code
+ , fun tree_to_chars/3 %% Convert IR to code
  , fun footer/3         %% Add footer
  ].
 
@@ -91,11 +91,12 @@ steps() ->
 %% Code generation steps
 
 %% @hidden declarations and such
--spec header(bfer_lib:ast(), s(), string()) -> {bfer_lib:ast(), s(), string()}.
+-spec header(bfer_lib:ast(), s(), string())
+            -> {bfer_lib:ast(), s(), io_lib:chars()}.
 header(Nodes, #s{label=Label, head=Head, indent_depth=N} = S0, _Code0 = "") ->
   S       = S0#s{indent_depth=N+(2*S0#s.indent_level)},
-  Indent0 = indent_str(S0#s{indent_depth=N+S0#s.indent_level}),
-  Indent  = indent_str(S),
+  Indent0 = indent_chars(S0#s{indent_depth=N+S0#s.indent_level}),
+  Indent  = indent_chars(S),
   Str     = "declare void @llvm.memset.p0i8.i32(i8* nocapture, i8, i32, i32, i1"
             ") nounwind~n"
             "declare i32 @getchar()~n"
@@ -112,14 +113,14 @@ header(Nodes, #s{label=Label, head=Head, indent_depth=N} = S0, _Code0 = "") ->
  {Nodes, S, Code}.
 
 %% @hidden Convert an ir() to LLVM ASM given state
--spec tree_to_string(bfer_lib:ir(), s(), string())
-                    -> {bfer_lib:ir(), s(), string()}.
-tree_to_string(Nodes = [], S, Code) ->
+-spec tree_to_chars(bfer_lib:ir(), s(), io_lib:chars())
+                    -> {bfer_lib:ir(), s(), io_lib:chars()}.
+tree_to_chars(Nodes = [], S, Code) ->
   {Nodes, S, Code};
-tree_to_string([{add, Num} | Nodes], #s{head=Head, tape=Tape0} = S0, Code0) ->
+tree_to_chars([{add, Num} | Nodes], #s{head=Head, tape=Tape0} = S0, Code0) ->
   Tape1 = Tape0 + 1,
   Tape  = Tape1 + 1,
-  Indent= indent_str(S0),
+  Indent= indent_chars(S0),
   Args  = [ Code0
           , Indent
           , Indent, Tape1, Head
@@ -133,10 +134,10 @@ tree_to_string([{add, Num} | Nodes], #s{head=Head, tape=Tape0} = S0, Code0) ->
           "~sstore i8 %tape.~p, i8* %head.~p~n",
   Code  = format(Str, Args),
   S     = S0#s{tape=Tape},
-  tree_to_string(Nodes, S, Code);
-tree_to_string([{move, Num} | Nodes], #s{head=Head0} = S0, Code0) ->
+  tree_to_chars(Nodes, S, Code);
+tree_to_chars([{move, Num} | Nodes], #s{head=Head0} = S0, Code0) ->
   Head  = Head0 + 1,
-  Indent= indent_str(S0),
+  Indent= indent_chars(S0),
   Args  = [ Code0
           , Indent
           , Indent, Head, Head0, Num
@@ -146,11 +147,11 @@ tree_to_string([{move, Num} | Nodes], #s{head=Head0} = S0, Code0) ->
           "~s%head.~p = getelementptr i8* %head.~p, i32 ~p~n",
   Code  = format(Str, Args),
   S     = S0#s{head=Head},
-  tree_to_string(Nodes, S, Code);
-tree_to_string([get | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
+  tree_to_chars(Nodes, S, Code);
+tree_to_chars([get | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
   Tape1 = Tape0 + 1,
   Tape  = Tape1 + 1,
-  Indent= indent_str(S0),
+  Indent= indent_chars(S0),
   Args  = [ Code0
           , Indent
           , Indent, Tape1
@@ -164,11 +165,11 @@ tree_to_string([get | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
           "~sstore i8 %tape.~p, i8* %head.~p~n",
   Code  = format(Str, Args),
   S     = S0#s{tape=Tape},
-  tree_to_string(Nodes, S, Code);
-tree_to_string([put | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
+  tree_to_chars(Nodes, S, Code);
+tree_to_chars([put | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
   Tape1 = Tape0 + 1,
   Tape  = Tape1 + 1,
-  Indent= indent_str(S0),
+  Indent= indent_chars(S0),
   Args  = [ Code0
           , Indent
           , Indent, Tape1, Head
@@ -182,18 +183,18 @@ tree_to_string([put | Nodes], #s{tape=Tape0, head=Head} = S0, Code0) ->
           "~scall i32 @putchar(i32 %tape.~p)~n",
   Code  = format(Str, Args),
   S     = S0#s{tape=Tape},
-  tree_to_string(Nodes, S, Code);
-tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
+  tree_to_chars(Nodes, S, Code);
+tree_to_chars([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
   #s{head  = Head0, label = Label0, indent_depth=N}  = S0,
-  Indent0            = indent_str(S0),
+  Indent0            = indent_chars(S0),
   Head1              = Head0 + 1,
   LoopTest           = Label0 + 1,
   LoopBody           = LoopTest + 1,
   S1                 = S0#s{ head         = Head1
                            , label        = LoopBody
                            , indent_depth = N+S0#s.indent_level},
-  Indent1            = indent_str(S1),
-  {[], S2, LoopCode} = tree_to_string(LoopNodes, S1, ""),
+  Indent1            = indent_chars(S1),
+  {[], S2, LoopCode} = tree_to_chars(LoopNodes, S1, ""),
   LastLabel          = S2#s.label,
   LoopAfter          = LastLabel + 1,
   Tape               = S2#s.tape + 1,
@@ -232,13 +233,13 @@ tree_to_string([{loop, LoopNodes} | Nodes], #s{} = S0, Code0) ->
              , indent_depth = S1#s.indent_depth
              },
   Code = format(Str, Args),
-  tree_to_string(Nodes, S, Code).
+  tree_to_chars(Nodes, S, Code).
 
 %% @hidden return and free memory
--spec footer(bfer_lib:ir(), s(), string())
-            -> {bfer_lib:ir(), s(), string()}.
+-spec footer(bfer_lib:ir(), s(), io_lib:chars())
+            -> {bfer_lib:ir(), s(), io_lib:chars()}.
 footer(Nodes = [], S, Code0) ->
-  Indent      = indent_str(S),
+  Indent      = indent_chars(S),
   FooterCode0 = "~scall void @free(i8* %arr)\n"
                 "~sret void\n"
                 "}\n",
@@ -249,11 +250,11 @@ footer(Nodes = [], S, Code0) ->
 %%-----------------------------------------------------------------------------
 %% Helpers
 
-indent_str(#s{indent_chr = _IndentChr , indent_depth = 0} = _S) -> "";
-indent_str(#s{indent_chr = IndentChr  , indent_depth = N} = S)  ->
-  [IndentChr | indent_str(S#s{indent_depth=N-1})].
+indent_chars(#s{indent_chr = _IndentChr , indent_depth = 0} = _S) -> "";
+indent_chars(#s{indent_chr = IndentChr  , indent_depth = N} = S)  ->
+  [IndentChr | indent_chars(S#s{indent_depth=N-1})].
 
-format(S, A) -> lists:flatten(io_lib:format(S,A)).
+format(S, A) -> io_lib:format(S,A).
 
 %%=============================================================================
 %% Test cases
@@ -261,37 +262,37 @@ format(S, A) -> lists:flatten(io_lib:format(S,A)).
 -include_lib("eunit/include/eunit.hrl").
 
 ident_str_test_() ->
-  [ ?_assertEqual(""   , indent_str(#s{indent_depth=0}))
-  , ?_assertEqual("  " , indent_str(#s{indent_depth=2}))
+  [ ?_assertEqual(""   , indent_chars(#s{indent_depth=0}))
+  , ?_assertEqual("  " , indent_chars(#s{indent_depth=2}))
   ].
 
-tree_to_string_test_() ->
+tree_to_chars_test_() ->
   [ ?_assertEqual("; add/sub\n"
                   "%tape.1 = load i8* %head.0\n"
                   "%tape.2 = add i8 %tape.1, 1\n"
                   "store i8 %tape.2, i8* %head.0\n",
-                  element(3,tree_to_string([{add, 1}], #s{}, "")))
+                  get_flattened_code(tree_to_chars([{add, 1}], #s{}, "")))
   , ?_assertEqual("; add/sub\n"
                   "%tape.1 = load i8* %head.0\n"
                   "%tape.2 = add i8 %tape.1, -1\n"
                   "store i8 %tape.2, i8* %head.0\n",
-                  element(3,tree_to_string([{add, -1}], #s{}, "")))
+                  get_flattened_code(tree_to_chars([{add, -1}], #s{}, "")))
   , ?_assertEqual("; left/right\n"
                   "%head.1 = getelementptr i8* %head.0, i32 -1\n",
-                  element(3,tree_to_string([{move, -1}], #s{}, "")))
+                  get_flattened_code(tree_to_chars([{move, -1}], #s{}, "")))
   , ?_assertEqual("; left/right\n"
                   "%head.1 = getelementptr i8* %head.0, i32 1\n",
-                  element(3,tree_to_string([{move, 1}], #s{}, "")))
+                  get_flattened_code(tree_to_chars([{move, 1}], #s{}, "")))
   , ?_assertEqual("; put\n"
                   "%tape.1 = load i8* %head.0\n"
                   "%tape.2 = sext i8 %tape.1 to i32\n"
                   "call i32 @putchar(i32 %tape.2)\n",
-                  element(3,tree_to_string([put], #s{}, "")))
+                  get_flattened_code(tree_to_chars([put], #s{}, "")))
   , ?_assertEqual("; get\n"
                   "%tape.1 = call i32 @getchar()\n"
                   "%tape.2 = trunc i32 %tape.1 to i8\n"
                   "store i8 %tape.2, i8* %head.0\n",
-                  element(3,tree_to_string([get], #s{}, "")))
+                  get_flattened_code(tree_to_chars([get], #s{}, "")))
   , ?_assertEqual("br label %main.1 ; [\n"
                   "main.2: ; loop-body\n"
                   "  br label %main.1 ; ]\n"
@@ -302,7 +303,7 @@ tree_to_string_test_() ->
                   "  br i1 %test.1, label %main.3, label %main.2\n"
                   "main.3: ; loop-after\n"
                   "  %head.2 = phi i8* [%head.1, %main.1]\n",
-                  element(3,tree_to_string([{loop, []}], #s{}, "")))
+                  get_flattened_code(tree_to_chars([{loop, []}], #s{}, "")))
   , ?_assertEqual(
        "br label %main.1 ; [\n"
        "main.2: ; loop-body\n"
@@ -324,8 +325,10 @@ tree_to_string_test_() ->
        "  br i1 %test.2, label %main.6, label %main.2\n"
        "main.6: ; loop-after\n"
        "  %head.4 = phi i8* [%head.1, %main.1]\n",
-       element(3, tree_to_string([{loop, [{loop, []}]}], #s{}, "")))
+       get_flattened_code(tree_to_chars([{loop, [{loop, []}]}], #s{}, "")))
   ].
+
+get_flattened_code(T) -> lists:flatten(element(3,T)).
 
 %%% Local Variables:
 %%% allout-layout: t

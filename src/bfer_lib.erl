@@ -41,21 +41,18 @@
 %%=============================================================================
 %% Types
 
-%% @doc Tokens
 -type token()     :: statement()
                    | begin_loop
                    | end_loop.
-%% @doc Abstract Syntax Tree nodes
 -type statement() :: left
                    | right
                    | add
                    | sub
                    | put
                    | get.
-%% @doc Abstract Syntax Tree
+
 -type ast()       :: [statement() | {loop, ast()}].
 
-%% @doc IR code
 -type ir()        :: [ put
                      | get
                      | {move, integer()}

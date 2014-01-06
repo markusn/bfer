@@ -79,7 +79,7 @@ parse(Tokens) ->
 code([begin_loop | Tokens0], Ast)  ->
   %% We assert that the next symbol is end_loop
   {[end_loop | Tokens], LoopAst} = code(Tokens0, []),
-  code_prim(Tokens, Ast++[{loop, LoopAst}]);
+  code_prim(Tokens, [{loop, LoopAst}|Ast]);
 %% code ::= statement code_prim
 code([Token|_] = Tokens, Ast0) when ?IS_STATEMENT(Token) ->
   {Rest, Ast} = statement(Tokens, Ast0),
@@ -88,15 +88,15 @@ code([Token|_] = Tokens, Ast0) when ?IS_STATEMENT(Token) ->
 %% @hidden code_prim ::= nil | code
 -spec code_prim([bfer_lib:token()], bfer_lib:ast())
                -> {[bfer_lib:token()], bfer_lib:ast()}.
-code_prim([            ]          , Ast) -> {[], Ast};         %% nil
-code_prim([end_loop | _] = Tokens , Ast) -> {Tokens, Ast};     %% look ahead!
+code_prim([            ]          , Ast) -> {[], lists:reverse(Ast)}; %% nil
+code_prim([end_loop | _] = Tokens , Ast) -> {Tokens, lists:reverse(Ast)}; %%look
 code_prim([_        | _] = Tokens , Ast) -> code(Tokens, Ast). %% code
 
 %% @hidden statement ::= left | right | add | sub | put | get
 -spec statement([bfer_lib:token()], bfer_lib:ast())
                -> {[bfer_lib:token()], bfer_lib:ast()}.
 statement([Token|Tokens], Ast) when ?IS_STATEMENT(Token) ->
-  {Tokens, Ast ++ [Token]}.
+  {Tokens, [Token | Ast]}.
 
 %%=============================================================================
 %% Unit tests
