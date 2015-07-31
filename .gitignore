@@ -5,3 +5,4 @@ a.out*
 doc
 ebin
 *~
+.depsolver_plt

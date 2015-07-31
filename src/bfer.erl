@@ -65,7 +65,7 @@ compile(In, Optimize, Out, Llc, Cc) ->
 
 %%=============================================================================
 %% Test cases
-%%-ifdef(TEST).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 %% Just assert that nothing crashes
@@ -83,7 +83,7 @@ main_test_() ->
     end
   }.
 
-
+-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2

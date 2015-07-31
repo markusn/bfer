@@ -80,7 +80,7 @@ compile(Code, Optimize) ->
 %% Internal functions
 
 %% @hidden Compilation steps
--spec steps(boolean())-> [fun()].
+-spec steps(boolean())-> [fun(),...].
 steps(Optimize) ->
   [ fun bfer_lexer:lex/1                    %% lex the raw BF
   , fun bfer_parser:parse/1                 %% parse the tokens
@@ -94,7 +94,7 @@ optimizer(true)  -> fun bfer_ir_optimizer:optimize/1.
 
 %%=============================================================================
 %% Test cases
-%%-ifdef(TEST).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 compile_helloworld_test() ->
@@ -105,7 +105,7 @@ compile_helloworld_test() ->
   ?assertEqual(binary_to_list(LLCode), compile(binary_to_list(BFCode), false)),
   ?assertEqual(binary_to_list(LLCodeOpt),compile(binary_to_list(BFCode), true)).
 
-%%-endif.
+-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2

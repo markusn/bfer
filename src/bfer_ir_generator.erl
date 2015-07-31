@@ -77,7 +77,7 @@ generate_val(right) -> 1.
 
 %%=============================================================================
 %% Test cases
-%%-ifdef(TEST).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 generate_code_test_() ->
@@ -100,6 +100,7 @@ generate_code_test_() ->
                       add]))
   ].
 
+-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2

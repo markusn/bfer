@@ -76,14 +76,15 @@ generate_code(Tree) ->
 %% Initialization functions
 
 %% @hidden Create initial arguments
--spec init(bfer_lib:ast()) -> {bfer_lib:ast(), s(), io_lib:chars()}.
+-spec init(bfer_lib:ir()) -> {bfer_lib:ir(), s(), io_lib:chars()}.
 init(Tree) -> {Tree, #s{}, ""}.
 
 %% @hidden Returns the steps neccessary to convert IR to LLVM Asm
--spec steps() -> [fun()].
+-spec steps() -> [fun((bfer_lib:ir(), s(), io_lib:chars())
+                      -> {bfer_lib:ir(), s(), io_lib:chars()}),...].
 steps() ->
  [ fun header/3         %% Add header
- , fun tree_to_chars/3 %% Convert IR to code
+ , fun tree_to_chars/3  %% Convert IR to code
  , fun footer/3         %% Add footer
  ].
 
@@ -91,8 +92,8 @@ steps() ->
 %% Code generation steps
 
 %% @hidden declarations and such
--spec header(bfer_lib:ast(), s(), string())
-            -> {bfer_lib:ast(), s(), io_lib:chars()}.
+-spec header(bfer_lib:ir(), s(), io_lib:chars())
+            -> {bfer_lib:ir(), s(), io_lib:chars()}.
 header(Nodes, #s{label=Label, head=Head, indent_depth=N} = S0, _Code0 = "") ->
   S       = S0#s{indent_depth=N+(2*S0#s.indent_level)},
   Indent0 = indent_chars(S0#s{indent_depth=N+S0#s.indent_level}),
@@ -258,7 +259,7 @@ format(S, A) -> io_lib:format(S,A).
 
 %%=============================================================================
 %% Test cases
-%%-ifdef(TEST).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 ident_str_test_() ->
@@ -330,6 +331,7 @@ tree_to_chars_test_() ->
 
 get_flattened_code(T) -> lists:flatten(element(3,T)).
 
+-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2

@@ -56,7 +56,7 @@ lex([_A|Str])   -> lex(Str). %% Ignore everything else
 
 %%=============================================================================
 %% Unit tests
-%%-ifdef(TEST).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 lex_test_() ->
@@ -65,6 +65,7 @@ lex_test_() ->
                    lex("<>++ +foo-[+.,]"))}
   ].
 
+-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2

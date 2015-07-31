@@ -100,7 +100,7 @@ statement([Token|Tokens], Ast) when ?IS_STATEMENT(Token) ->
 
 %%=============================================================================
 %% Unit tests
-%%-ifdef(TEST).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 parse_test_() ->
@@ -119,6 +119,7 @@ parse_test_() ->
                    parse([]))}
   ].
 
+-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2

@@ -89,7 +89,7 @@ remove_nops([Node | Nodes])                                 ->
 
 %%=============================================================================
 %% Test cases
-%%-ifdef(TEST).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
 optimize_test_() ->
@@ -100,6 +100,7 @@ optimize_test_() ->
                  {move, 0}]))
   ].
 
+-endif.
 %%% Local Variables:
 %%% allout-layout: t
 %%% erlang-indent-level: 2
