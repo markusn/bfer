@@ -1,4 +1,5 @@
 language: erlang
+sudo: false
 otp_release:
   - R18
   - R16B
