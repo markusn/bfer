@@ -1,7 +1,7 @@
 language: erlang
 sudo: false
 otp_release:
-  - R18
+  - 18.0
   - R16B
 addons:
   apt:
