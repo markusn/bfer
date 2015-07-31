@@ -1,9 +1,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% @doc Brainfuck compiler
 %%% @end
-%%% @author Markus Näsman <markus@botten.org>
-%%% @copyright 2013 (c) Markus Näsman <markus@botten.org>
-%%% @license Copyright (c) 2013, Markus Näsman
+%%% @author Markus Ekholm <markus@botten.org>
+%%% @copyright 2013 (c) Markus Ekholm <markus@botten.org>
+%%% @license Copyright (c) 2013, Markus Ekholm
 %%% All rights reserved.
 %%% Redistribution and use in source and binary forms, with or without
 %%% modification, are permitted provided that the following conditions are met:
