@@ -1,7 +1,9 @@
 language: erlang
 otp_release:
-   - R16B
-before_install:
- - sudo apt-get update -qq
- - sudo apt-get install -qq llvm
+  - R18
+  - R16B
+addons:
+  apt:
+    packages:
+      - llvm
 script: "./rebar compile && ./rebar skip_deps=true eunit"
