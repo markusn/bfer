@@ -33,7 +33,7 @@ bfer [-o] INPUT.bf OUTPUT
 Specifying -o "optimizes" the generated LLVM IR.
 
 ## Author
-Markus Näsman (markus at botten dot org).
+Markus Ekholm (markus at botten dot org).
 
 ## License
 3-clause BSD. For details see `COPYING`.
